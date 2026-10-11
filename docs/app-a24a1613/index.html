@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safe to Spend — ADHD Budget Planner</title>
+<style>
+:root {
+  --bg: #FBF7F0;
+  --ink: #2B2622;
+  --muted: #7A7267;
+  --accent: #1F6F6B;
+  --accent-ink: #FFFFFF;
+  --warn: #E08E45;
+  --danger: #C1543C;
+  --card: #FFFFFF;
+  --border: #E8DFD2;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Lexend, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+#app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+}
+#app-title { font-size: 1.05rem; }
+#app-body { display: flex; min-height: calc(100vh - 54px); }
+#view-nav {
+  display: flex; flex-direction: column; gap: 4px; width: 190px;
+  padding: 16px 10px; border-right: 1px solid var(--border); flex-shrink: 0;
+}
+#view-nav button {
+  text-align: left; background: transparent; border: 0; padding: 12px 14px;
+  border-radius: 12px; font: inherit; font-size: .95rem; color: var(--ink); cursor: pointer;
+}
+#view-nav button[aria-current="page"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 4px rgba(43,38,34,.08); }
+#view-root { flex: 1; padding: 24px 24px 64px; max-width: 760px; }
+h1 { font-size: 1.5rem; margin: 4px 0 4px; }
+h2 { font-size: 1.1rem; margin: 0 0 10px; }
+p.sub { margin: 0 0 22px; color: var(--muted); }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(43,38,34,.05);
+}
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 1; min-width: 110px; }
+input[type=text], input[type=number], input[type=date], select, textarea {
+  flex: 1; min-width: 0; font: inherit; font-size: .95rem; padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--ink);
+}
+label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 4px; }
+.field { display: flex; flex-direction: column; flex: 1; min-width: 110px; }
+button {
+  font: inherit; font-size: .95rem; padding: 12px 16px; border: 0; border-radius: 10px;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer; min-height: 44px;
+}
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+button.danger { background: var(--danger); }
+ul { list-style: none; padding: 0; margin: 14px 0 0; }
+li.item-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 0; border-top: 1px solid var(--border);
+}
+li.item-row:first-child { border-top: 0; }
+.item-main { display: flex; flex-direction: column; gap: 2px; }
+.item-name { font-weight: 600; }
+.item-meta { font-size: .82rem; color: var(--muted); }
+.amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+.amount.positive { color: var(--accent); }
+.amount.warn { color: var(--warn); }
+.amount.danger { color: var(--danger); }
+.hero {
+  font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  margin: 4px 0 2px; color: var(--accent);
+}
+.hero.warn { color: var(--warn); }
+.hero.danger { color: var(--danger); }
+.hero-label { color: var(--muted); font-size: .9rem; margin-bottom: 10px; }
+.right-now-card { border-left: 4px solid var(--accent); }
+.progress-track { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; height: 10px; overflow: hidden; margin-top: 8px; }
+.progress-fill { background: var(--accent); height: 100%; }
+.empty { color: var(--muted); font-size: .9rem; padding: 10px 0; }
+.chart-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.chart-legend { list-style: none; margin: 0; padding: 0; font-size: .85rem; }
+.chart-legend li { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.chart-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.payday-list { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0; margin-top: 10px; }
+.payday-day { flex: 0 0 auto; min-width: 54px; text-align: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 6px; font-size: .78rem; }
+#demo-banner { text-align: center; padding: 10px; margin: 0; background: var(--warn); color: #fff; font-size: .85rem; }
+#demo-banner[hidden] { display: none; }
+
+@media (max-width: 680px) {
+  #app-body { flex-direction: column; }
+  #view-nav { flex-direction: row; width: auto; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  #view-root { max-width: none; padding: 18px; }
+  .hero { font-size: 2.1rem; }
+}
+
+</style>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#1F6F6B">
+</head>
+<body>
+<div id="app">
+  <header id="app-header">
+    <strong id="app-title">Safe to Spend — ADHD Budget Planner</strong>
+  </header>
+  <div id="app-body">
+    <nav id="view-nav" aria-label="Main navigation"></nav>
+    <main id="view-root" data-active-view=""></main>
+  </div>
+  <p id="demo-banner" hidden>Demo mode — some data and actions are limited. The full version is in your purchase.</p>
+</div>
+<script>
+window.APP_DEMO_MODE = false;
+
+/* Minimal hash router. Each module (app_src/modules/*.js) registers a view on
+ * App.views[id] = {navLabel, render(root)} and pushes id onto App.nav, in the order
+ * it should appear in the nav. render(root) MUST set root.dataset.activeView = id and
+ * replace root's content with that view's real markup (never just scroll to an anchor —
+ * validators/app_check.py's multi-view check clicks every nav item and asserts both
+ * data-active-view and the visible text actually change). */
+(function () {
+  window.App = window.App || { views: {}, nav: [] };
+
+  function show(id) {
+    var view = App.views[id];
+    if (!view) {
+      id = App.nav[0];
+      view = App.views[id];
+    }
+    if (!view) return;
+    view.render(document.getElementById('view-root'));
+    document.querySelectorAll('#view-nav [data-nav]').forEach(function (b) {
+      b.setAttribute('aria-current', b.dataset.nav === id ? 'page' : 'false');
+    });
+    if (location.hash !== '#' + id) location.hash = '#' + id;
+  }
+
+  function buildNav() {
+    var nav = document.getElementById('view-nav');
+    nav.innerHTML = '';
+    App.nav.forEach(function (id) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.nav = id;
+      b.textContent = App.views[id].navLabel;
+      b.addEventListener('click', function () { show(id); });
+      nav.appendChild(b);
+    });
+  }
+
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+  window.AppRouter = {
+    init: function () {
+      buildNav();
+      show(location.hash.slice(1) || App.nav[0]);
+    },
+  };
+})();
+
+
+/* Tiny inline-SVG chart helpers — no CDN chart library (would break the self-contained/
+ * no-network invariant). Reads real app state only, never sample/placeholder numbers. */
+window.App = window.App || {};
+App.charts = {
+  /* segments: [{label, value, color}]. Returns an SVG ring + a separate legend list
+   * (caller composes them side by side in .chart-wrap / .chart-legend). */
+  donut: function (segments) {
+    var total = segments.reduce(function (s, seg) { return s + seg.value; }, 0);
+    var r = 54, cx = 64, cy = 64, circumference = 2 * Math.PI * r;
+    if (total <= 0) {
+      return {
+        svg: '<svg viewBox="0 0 128 128" role="img" aria-label="No spending logged yet">' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--border)" stroke-width="16"></circle>' +
+          '</svg>',
+        legend: '<li class="empty">Nothing logged yet</li>',
+      };
+    }
+    var offset = 0;
+    var arcs = segments.map(function (seg) {
+      var frac = seg.value / total;
+      var dash = frac * circumference;
+      var circle = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + seg.color +
+        '" stroke-width="16" stroke-dasharray="' + dash + ' ' + (circumference - dash) +
+        '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"></circle>';
+      offset += dash;
+      return circle;
+    }).join('');
+    var legend = segments.map(function (seg) {
+      return '<li><span class="chart-dot" style="background:' + seg.color + '"></span>' +
+        seg.label + ' — $' + seg.value.toFixed(2) + '</li>';
+    }).join('');
+    return {
+      svg: '<svg viewBox="0 0 128 128" role="img" aria-label="Spending by category">' + arcs + '</svg>',
+      legend: legend,
+    };
+  },
+};
+
+
+/* Shared money/date helpers used by every view. No fake numbers anywhere downstream —
+ * every figure these functions produce is derived from real App.store data. */
+window.App = window.App || {};
+App.engine = (function () {
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function parseISO(iso) {
+    var p = iso.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
+  function daysInMonth(date) { return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); }
+  function monthKey(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1); }
+  function fmtMoney(n) {
+    var sign = n < 0 ? '-' : '';
+    return sign + '$' + Math.abs(n).toFixed(2);
+  }
+  function fmtDate(iso) {
+    var d = parseISO(iso);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  /* Converts any recurring amount to its "per calendar month" equivalent, used by the
+   * safe-to-spend calculation. This is what lets a buyer enter a bill the way it really
+   * comes round (weekly, every 3 months, etc.) without doing the maths themselves. */
+  function monthlyEquivalent(item) {
+    var amt = parseFloat(item.amount) || 0;
+    switch (item.cadence) {
+      case 'monthly': return amt;
+      case 'weekly': return amt * 52 / 12;
+      case 'biweekly': return amt * 26 / 12;
+      case 'every_n_months': return amt / Math.max(1, parseInt(item.months, 10) || 1);
+      case 'once': return 0; // counted separately as a one-off, not folded into the monthly rate
+      default: return amt;
+    }
+  }
+
+  /* Next occurrence date (ISO) on/after `from` for a given cadence + anchor info. */
+  function nextOccurrence(item, fromISO) {
+    var from = parseISO(fromISO || todayISO());
+    if (item.cadence === 'monthly' || item.cadence === 'every_n_months') {
+      var day = Math.min(parseInt(item.day, 10) || 1, daysInMonth(from));
+      var months = item.cadence === 'every_n_months' ? Math.max(1, parseInt(item.months, 10) || 1) : 1;
+      var d = new Date(from.getFullYear(), from.getMonth(), day);
+      while (d < from) d = new Date(d.getFullYear(), d.getMonth() + months, day);
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+    if (item.cadence === 'weekly' || item.cadence === 'biweekly') {
+      var anchor = item.date ? parseISO(item.date) : from;
+      var step = item.cadence === 'weekly' ? 7 : 14;
+      var cur = new Date(anchor);
+      while (cur < from) cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + step);
+      return cur.getFullYear() + '-' + pad(cur.getMonth() + 1) + '-' + pad(cur.getDate());
+    }
+    if (item.cadence === 'once') return item.date || fromISO;
+    return fromISO;
+  }
+
+  function daysBetween(aISO, bISO) {
+    var a = parseISO(aISO), b = parseISO(bISO);
+    return Math.round((b - a) / 86400000);
+  }
+
+  function addDays(iso, n) {
+    var d = parseISO(iso);
+    d.setDate(d.getDate() + n);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  return {
+    todayISO: todayISO, parseISO: parseISO, daysInMonth: daysInMonth, monthKey: monthKey,
+    fmtMoney: fmtMoney, fmtDate: fmtDate, monthlyEquivalent: monthlyEquivalent,
+    nextOccurrence: nextOccurrence, daysBetween: daysBetween, addDays: addDays, uid: uid,
+  };
+})();
+
+
+/* Dashboard: the one number ("safe to spend today"), a single next-step prompt, a
+ * short payday forecast, a real spend-by-note donut, and quick spend logging. Every
+ * figure is computed from App.store data — nothing here is sample/placeholder. */
+window.App = window.App || { views: {}, nav: [] };
+
+App.views.dashboard = {
+  navLabel: 'Dashboard',
+  render: function (root) {
+    root.dataset.activeView = 'dashboard';
+    var E = App.engine;
+    var today = E.todayISO();
+    var paychecks = App.store.get('paychecks', []);
+    var bills = App.store.get('bills', []);
+    var debts = App.store.get('debts', []);
+    var goals = App.store.get('goals', []);
+    var log = App.store.get('log', []);
+
+    var monthlyIncome = paychecks.reduce(function (s, p) { return s + E.monthlyEquivalent(p); }, 0);
+    var monthlyBills = bills.reduce(function (s, b) { return s + E.monthlyEquivalent(b); }, 0);
+    var monthlyDebtMin = debts.reduce(function (s, d) { return s + (parseFloat(d.minPayment) || 0); }, 0);
+    var monthlySavings = goals.reduce(function (s, g) { return s + (parseFloat(g.monthlyContribution) || 0); }, 0);
+    var availableThisMonth = monthlyIncome - monthlyBills - monthlyDebtMin - monthlySavings;
+
+    var now = new Date();
+    var monthKey = E.monthKey(now);
+    var spentThisMonth = log.filter(function (e) { return (e.date || '').slice(0, 7) === monthKey; })
+      .reduce(function (s, e) { return s + (parseFloat(e.amount) || 0); }, 0);
+    var daysInMonth = E.daysInMonth(now);
+    var daysLeft = daysInMonth - now.getDate() + 1;
+    var remainingBudget = availableThisMonth - spentThisMonth;
+    var safeToday = remainingBudget / Math.max(1, daysLeft);
+    var dailyAverage = availableThisMonth / daysInMonth;
+
+    var heroClass = safeToday <= 0 ? 'danger' : (dailyAverage > 0 && safeToday < dailyAverage * 0.3 ? 'warn' : '');
+
+    // ---- Right now: one message, one action -------------------------------------
+    var rightNowHtml;
+    if (paychecks.length === 0) {
+      rightNowHtml =
+        '<h2>Right now</h2>' +
+        '<p>Add your paycheck so we can work out what’s safe to spend. Nothing else needs setting up first.</p>' +
+        '<div class="row">' +
+        '  <div class="field"><label for="paycheckAmount">Amount</label><input id="paycheckAmount" type="number" placeholder="2200"></div>' +
+        '  <div class="field"><label for="paycheckCadence">How often</label>' +
+        '    <select id="paycheckCadence">' +
+        '      <option value="monthly">Once a month</option>' +
+        '      <option value="biweekly">Every 2 weeks</option>' +
+        '      <option value="weekly">Every week</option>' +
+        '    </select>' +
+        '  </div>' +
+        '  <div class="field"><label for="paycheckDay">Day it lands</label><input id="paycheckDay" type="number" min="1" max="31" placeholder="e.g. 1"></div>' +
+        '</div>' +
+        '<button id="savePaycheckBtn" type="button">Save paycheck</button>';
+    } else {
+      var upcoming = bills.map(function (b) { return { bill: b, due: E.nextOccurrence(b, today) }; })
+        .sort(function (a, z) { return a.due < z.due ? -1 : 1; })[0];
+      var msg;
+      if (safeToday <= 0) {
+        msg = 'You’ve used up today’s safe-to-spend. That’s okay — it resets tomorrow.';
+      } else if (upcoming && E.daysBetween(today, upcoming.due) <= 2) {
+        msg = upcoming.bill.name + ' (' + E.fmtMoney(parseFloat(upcoming.bill.amount) || 0) + ') is due ' +
+          (upcoming.due === today ? 'today' : E.fmtDate(upcoming.due)) + '. It’s already counted in your number above.';
+      } else {
+        msg = 'You’re clear to spend up to ' + E.fmtMoney(Math.max(0, safeToday)) + ' today. Log it below as you go.';
+      }
+      rightNowHtml = '<h2>Right now</h2><p>' + msg + '</p>';
+    }
+
+    // ---- Payday forecast ----------------------------------------------------------
+    var forecastHtml = '<p class="empty">Add a paycheck to see your forecast to payday.</p>';
+    if (paychecks.length) {
+      var nextPayday = paychecks.map(function (p) { return E.nextOccurrence(p, today); })
+        .sort()[0];
+      var daysUntil = Math.max(1, E.daysBetween(today, nextPayday));
+      var n = Math.min(daysUntil, 10);
+      var running = remainingBudget;
+      var days = [];
+      for (var i = 0; i < n; i++) {
+        var iso = E.addDays(today, i);
+        var dueAmt = bills.filter(function (b) { return E.nextOccurrence(b, iso) === iso; })
+          .reduce(function (s, b) { return s + (parseFloat(b.amount) || 0); }, 0);
+        if (i > 0) running -= safeToday;
+        running -= dueAmt;
+        days.push('<div class="payday-day"><div>' + E.fmtDate(iso) + '</div><div class="amount ' +
+          (running < 0 ? 'danger' : '') + '">' + E.fmtMoney(running) + '</div></div>');
+      }
+      forecastHtml = '<p class="sub" style="margin:0 0 4px">Next payday: ' + E.fmtDate(nextPayday) + '</p>' +
+        '<div class="payday-list">' + days.join('') + '</div>';
+    }
+
+    // ---- Spend-by-note donut (real categories = the note text the buyer typed) ---
+    var byNote = {};
+    log.forEach(function (e) {
+      var key = (e.note || 'Other').trim() || 'Other';
+      byNote[key] = (byNote[key] || 0) + (parseFloat(e.amount) || 0);
+    });
+    var palette = ['#1F6F6B', '#E08E45', '#C1543C', '#8E7CC3', '#4A7A96', '#B08968'];
+    var segments = Object.keys(byNote).sort(function (a, z) { return byNote[z] - byNote[a]; })
+      .slice(0, 6).map(function (key, i) { return { label: key, value: byNote[key], color: palette[i % palette.length] }; });
+    var chart = App.charts.donut(segments);
+
+    // ---- Recent activity (keeps a logged spend visibly on the page, incl. after reload)
+    var recent = log.slice(-6).reverse();
+    var recentHtml = recent.length
+      ? recent.map(function (e) {
+          return '<li class="item-row"><div class="item-main"><span class="item-name">' +
+            (e.note || 'Spend') + '</span><span class="item-meta">' + E.fmtDate(e.date) + '</span></div>' +
+            '<span class="amount">' + E.fmtMoney(parseFloat(e.amount) || 0) + '</span></li>';
+        }).join('')
+      : '<li class="empty">Nothing logged yet — add your first spend below.</li>';
+
+    root.innerHTML =
+      '<h1>Dashboard</h1>' +
+      '<p class="sub">One number, one next step. Everything else can wait.</p>' +
+      '<div class="card">' +
+      '  <div class="hero-label">Safe to spend today</div>' +
+      '  <div id="safeToSpend" class="hero ' + heroClass + '">' + E.fmtMoney(safeToday) + '</div>' +
+      '</div>' +
+      '<div class="card right-now-card" id="rightNowCard">' + rightNowHtml + '</div>' +
+      '<div class="card">' +
+      '  <h2>Run to payday</h2>' +
+      '  <div id="paydayForecast">' + forecastHtml + '</div>' +
+      '</div>' +
+      '<div class="card">' +
+      '  <h2>Where it’s going</h2>' +
+      '  <div id="spendChart" class="chart-wrap">' + chart.svg +
+      '    <ul class="chart-legend">' + chart.legend + '</ul>' +
+      '  </div>' +
+      '</div>' +
+      '<div class="card">' +
+      '  <h2>Log a spend</h2>' +
+      '  <div class="row">' +
+      '    <div class="field"><label for="spendAmount">Amount</label><input id="spendAmount" type="number" placeholder="25"></div>' +
+      '    <div class="field"><label for="spendNote">What was it?</label><input id="spendNote" type="text" placeholder="Groceries"></div>' +
+      '  </div>' +
+      '  <button id="logSpendBtn" type="button">Log spend</button>' +
+      '  <ul id="recentActivity">' + recentHtml + '</ul>' +
+      '</div>';
+
+    document.getElementById('savePaycheckBtn') && document.getElementById('savePaycheckBtn').addEventListener('click', function () {
+      var amount = parseFloat(document.getElementById('paycheckAmount').value);
+      if (!isFinite(amount) || amount <= 0) { alert('Enter a paycheck amount first.'); return; }
+      var cadence = document.getElementById('paycheckCadence').value;
+      var day = parseInt(document.getElementById('paycheckDay').value, 10) || 1;
+      paychecks.push({ id: E.uid(), name: 'Paycheck', amount: amount, cadence: cadence, day: day, date: today });
+      App.store.set('paychecks', paychecks);
+      App.views.dashboard.render(root);
+    });
+
+    document.getElementById('logSpendBtn').addEventListener('click', function () {
+      var amtEl = document.getElementById('spendAmount');
+      var noteEl = document.getElementById('spendNote');
+      var amount = parseFloat(amtEl.value);
+      if (!isFinite(amount) || amount <= 0) { alert('Enter an amount first.'); return; }
+      if (window.APP_DEMO_MODE && log.length >= 10) {
+        alert('The demo is limited to 10 logged spends. The full version has no limit.');
+        return;
+      }
+      log.push({ id: E.uid(), amount: amount, note: noteEl.value.trim(), date: today });
+      App.store.set('log', log);
+      App.views.dashboard.render(root);
+    });
+  },
+};
+App.nav.push('dashboard');
+
+
+/* Bills: flexible recurring cadence (monthly / every 2 weeks / every week / every few
+ * months / just once) so a buyer never has to re-enter a bill that "comes round however
+ * it really comes round" (research gap). Each bill's monthly-equivalent cost feeds the
+ * dashboard's safe-to-spend number automatically — nothing here needs re-budgeting by hand. */
+window.App = window.App || { views: {}, nav: [] };
+
+App.views.bills = {
+  navLabel: 'Bills',
+  render: function (root) {
+    root.dataset.activeView = 'bills';
+    var E = App.engine;
+    var bills = App.store.get('bills', []);
+
+    var rows = bills.length
+      ? bills.map(function (b) {
+          var next = E.nextOccurrence(b, E.todayISO());
+          return '<li class="item-row" data-bill-id="' + b.id + '"><div class="item-main">' +
+            '<span class="item-name">' + b.name + '</span>' +
+            '<span class="item-meta">' + cadenceLabel(b) + ' · next ' + E.fmtDate(next) +
+            ' · ' + E.fmtMoney(E.monthlyEquivalent(b)) + '/mo equivalent</span></div>' +
+            '<span class="amount">' + E.fmtMoney(parseFloat(b.amount) || 0) + '</span>' +
+            '<button type="button" class="ghost remove-bill" data-id="' + b.id + '">Remove</button></li>';
+        }).join('')
+      : '<li class="empty">No bills yet — add your first one below.</li>';
+
+    root.innerHTML =
+      '<h1>Bills</h1>' +
+      '<p class="sub">Add a bill once — it carries forward on its own schedule.</p>' +
+      '<div class="card"><ul id="billsList">' + rows + '</ul></div>' +
+      '<div class="card">' +
+      '  <h2>Add a bill</h2>' +
+      '  <div class="row">' +
+      '    <div class="field"><label for="billName">Name</label><input id="billName" type="text" placeholder="Rent"></div>' +
+      '    <div class="field"><label for="billAmount">Amount</label><input id="billAmount" type="number" placeholder="950"></div>' +
+      '  </div>' +
+      '  <div class="row">' +
+      '    <div class="field"><label for="billCadence">How often</label>' +
+      '      <select id="billCadence">' +
+      '        <option value="monthly">Once a month</option>' +
+      '        <option value="biweekly">Every 2 weeks</option>' +
+      '        <option value="weekly">Every week</option>' +
+      '        <option value="every_n_months">Every few months</option>' +
+      '        <option value="once">Just once</option>' +
+      '      </select>' +
+      '    </div>' +
+      '    <div class="field"><label for="billDay">Day of month (if monthly)</label><input id="billDay" type="number" min="1" max="31" placeholder="1"></div>' +
+      '    <div class="field"><label for="billMonths">Every how many months (if “every few months”)</label><input id="billMonths" type="number" min="2" max="12" placeholder="3"></div>' +
+      '    <div class="field"><label for="billDate">Date (if weekly / every 2 weeks / just once)</label><input id="billDate" type="date"></div>' +
+      '  </div>' +
+      '  <button id="addBillBtn" type="button">Add bill</button>' +
+      '</div>';
+
+    function cadenceLabel(b) {
+      switch (b.cadence) {
+        case 'monthly': return 'Once a month';
+        case 'biweekly': return 'Every 2 weeks';
+        case 'weekly': return 'Every week';
+        case 'every_n_months': return 'Every ' + (b.months || 1) + ' months';
+        case 'once': return 'One-off';
+        default: return b.cadence;
+      }
+    }
+
+    root.querySelectorAll('.remove-bill').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.id;
+        App.store.set('bills', bills.filter(function (b) { return b.id !== id; }));
+        App.views.bills.render(root);
+      });
+    });
+
+    document.getElementById('addBillBtn').addEventListener('click', function () {
+      var name = document.getElementById('billName').value.trim();
+      var amount = parseFloat(document.getElementById('billAmount').value);
+      if (!name || !isFinite(amount) || amount <= 0) { alert('Enter a bill name and amount first.'); return; }
+      if (window.APP_DEMO_MODE && bills.length >= 5) {
+        alert('The demo is limited to 5 bills. The full version has no limit.');
+        return;
+      }
+      var cadence = document.getElementById('billCadence').value;
+      var day = parseInt(document.getElementById('billDay').value, 10) || 1;
+      var months = parseInt(document.getElementById('billMonths').value, 10) || 3;
+      var date = document.getElementById('billDate').value || E.todayISO();
+      bills.push({ id: E.uid(), name: name, amount: amount, cadence: cadence, day: day, months: months, date: date });
+      App.store.set('bills', bills);
+      App.views.bills.render(root);
+    });
+  },
+};
+App.nav.push('bills');
+
+
+/* Debt: track balances, choose a payoff order (highest rate first, or smallest balance
+ * first), and record real payments against a balance with a history. */
+window.App = window.App || { views: {}, nav: [] };
+
+App.views.debt = {
+  navLabel: 'Debt',
+  render: function (root) {
+    root.dataset.activeView = 'debt';
+    var E = App.engine;
+    var debts = App.store.get('debts', []);
+    var order = App.store.get('debtOrder', 'highest_rate');
+
+    var sorted = debts.slice().sort(function (a, z) {
+      return order === 'highest_rate'
+        ? (parseFloat(z.apr) || 0) - (parseFloat(a.apr) || 0)
+        : (parseFloat(a.balance) || 0) - (parseFloat(z.balance) || 0);
+    });
+
+    var rows = sorted.length
+      ? sorted.map(function (d, i) {
+          var paid = (d.payments || []).reduce(function (s, p) { return s + p.amount; }, 0);
+          return '<li class="item-row" data-debt-id="' + d.id + '"><div class="item-main">' +
+            '<span class="item-name">' + (i === 0 ? '★ ' : '') + d.name + '</span>' +
+            '<span class="item-meta">' + (d.apr ? d.apr + '% APR · ' : '') +
+            'min ' + E.fmtMoney(parseFloat(d.minPayment) || 0) + '/mo · ' +
+            E.fmtMoney(paid) + ' paid toward it so far</span></div>' +
+            '<span class="amount">' + E.fmtMoney(parseFloat(d.balance) || 0) + '</span>' +
+            '<button type="button" class="ghost remove-debt" data-id="' + d.id + '">Remove</button></li>';
+        }).join('')
+      : '<li class="empty">No debts yet — add one below, or skip this if it doesn’t apply to you.</li>';
+
+    var options = sorted.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
+
+    root.innerHTML =
+      '<h1>Debt</h1>' +
+      '<p class="sub">★ marks the one to focus extra payments on first.</p>' +
+      '<div class="card">' +
+      '  <label for="debtOrderToggle">Payoff order</label>' +
+      '  <select id="debtOrderToggle">' +
+      '    <option value="highest_rate"' + (order === 'highest_rate' ? ' selected' : '') + '>Highest interest rate first</option>' +
+      '    <option value="smallest_balance"' + (order === 'smallest_balance' ? ' selected' : '') + '>Smallest balance first</option>' +
+      '  </select>' +
+      '  <ul id="debtList">' + rows + '</ul>' +
+      '</div>' +
+      (sorted.length ? '<div class="card">' +
+      '  <h2>Record a payment</h2>' +
+      '  <div class="row">' +
+      '    <div class="field"><label for="debtPaymentTarget">Which debt</label><select id="debtPaymentTarget">' + options + '</select></div>' +
+      '    <div class="field"><label for="debtPaymentAmount">Amount</label><input id="debtPaymentAmount" type="number" placeholder="50"></div>' +
+      '  </div>' +
+      '  <button id="recordDebtPaymentBtn" type="button">Record payment</button>' +
+      '</div>' : '') +
+      '<div class="card">' +
+      '  <h2>Add a debt</h2>' +
+      '  <div class="row">' +
+      '    <div class="field"><label for="debtName">Name</label><input id="debtName" type="text" placeholder="Credit card"></div>' +
+      '    <div class="field"><label for="debtBalance">Balance</label><input id="debtBalance" type="number" placeholder="1200"></div>' +
+      '    <div class="field"><label for="debtApr">APR % (optional)</label><input id="debtApr" type="number" placeholder="22"></div>' +
+      '    <div class="field"><label for="debtMinPayment">Minimum payment / month</label><input id="debtMinPayment" type="number" placeholder="35"></div>' +
+      '  </div>' +
+      '  <button id="addDebtBtn" type="button">Add debt</button>' +
+      '</div>';
+
+    document.getElementById('debtOrderToggle').addEventListener('change', function (e) {
+      App.store.set('debtOrder', e.target.value);
+      App.views.debt.render(root);
+    });
+
+    root.querySelectorAll('.remove-debt').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.id;
+        App.store.set('debts', debts.filter(function (d) { return d.id !== id; }));
+        App.views.debt.render(root);
+      });
+    });
+
+    var recordBtn = document.getElementById('recordDebtPaymentBtn');
+    if (recordBtn) {
+      recordBtn.addEventListener('click', function () {
+        var targetId = document.getElementById('debtPaymentTarget').value;
+        var amount = parseFloat(document.getElementById('debtPaymentAmount').value);
+        if (!isFinite(amount) || amount <= 0) { alert('Enter a payment amount first.'); return; }
+        var d = debts.find(function (x) { return x.id === targetId; });
+        if (!d) return;
+        d.payments = d.payments || [];
+        d.payments.push({ date: E.todayISO(), amount: amount });
+        d.balance = Math.max(0, (parseFloat(d.balance) || 0) - amount);
+        App.store.set('debts', debts);
+        App.views.debt.render(root);
+      });
+    }
+
+    document.getElementById('addDebtBtn').addEventListener('click', function () {
+      var name = document.getElementById('debtName').value.trim();
+      var balance = parseFloat(document.getElementById('debtBalance').value);
+      var apr = parseFloat(document.getElementById('debtApr').value);
+      var minPayment = parseFloat(document.getElementById('debtMinPayment').value);
+      if (!name || !isFinite(balance) || balance < 0) { alert('Enter a debt name and balance first.'); return; }
+      if (window.APP_DEMO_MODE && debts.length >= 3) {
+        alert('The demo is limited to 3 debts. The full version has no limit.');
+        return;
+      }
+      debts.push({
+        id: E.uid(), name: name, balance: balance,
+        apr: isFinite(apr) ? apr : null,
+        minPayment: isFinite(minPayment) ? minPayment : 0,
+        payments: [],
+      });
+      App.store.set('debts', debts);
+      App.views.debt.render(root);
+    });
+  },
+};
+App.nav.push('debt');
+
+
+/* Savings: named goals with visible progress. An optional monthly contribution feeds
+ * straight into the dashboard's safe-to-spend number, same as a bill would. */
+window.App = window.App || { views: {}, nav: [] };
+
+App.views.savings = {
+  navLabel: 'Savings',
+  render: function (root) {
+    root.dataset.activeView = 'savings';
+    var E = App.engine;
+    var goals = App.store.get('goals', []);
+
+    var rows = goals.length
+      ? goals.map(function (g) {
+          var target = parseFloat(g.target) || 0;
+          var saved = parseFloat(g.saved) || 0;
+          var pct = target > 0 ? Math.min(100, Math.round((saved / target) * 100)) : 0;
+          return '<li class="item-row" data-goal-id="' + g.id + '" style="flex-direction:column;align-items:stretch">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+            '<div class="item-main"><span class="item-name">' + g.name + '</span>' +
+            '<span class="item-meta">' + E.fmtMoney(saved) + ' of ' + E.fmtMoney(target) +
+            (g.monthlyContribution ? ' · ' + E.fmtMoney(parseFloat(g.monthlyContribution)) + '/mo planned' : '') +
+            '</span></div>' +
+            '<button type="button" class="ghost remove-goal" data-id="' + g.id + '">Remove</button></div>' +
+            '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+            '<div class="row" style="margin-top:10px">' +
+            '<input type="number" class="add-progress-input" data-id="' + g.id + '" placeholder="Add amount saved">' +
+            '<button type="button" class="ghost add-progress-btn" data-id="' + g.id + '">Add</button></div>' +
+            '</li>';
+        }).join('')
+      : '<li class="empty">No goals yet — add one below.</li>';
+
+    root.innerHTML =
+      '<h1>Savings</h1>' +
+      '<p class="sub">See progress toward the things you’re actually saving for.</p>' +
+      '<div class="card"><ul id="goalsList">' + rows + '</ul></div>' +
+      '<div class="card">' +
+      '  <h2>Add a goal</h2>' +
+      '  <div class="row">' +
+      '    <div class="field"><label for="goalName">Name</label><input id="goalName" type="text" placeholder="Emergency fund"></div>' +
+      '    <div class="field"><label for="goalTarget">Target amount</label><input id="goalTarget" type="number" placeholder="1000"></div>' +
+      '    <div class="field"><label for="goalMonthly">Planned monthly contribution (optional)</label><input id="goalMonthly" type="number" placeholder="50"></div>' +
+      '  </div>' +
+      '  <button id="addGoalBtn" type="button">Add goal</button>' +
+      '</div>';
+
+    root.querySelectorAll('.remove-goal').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.id;
+        App.store.set('goals', goals.filter(function (g) { return g.id !== id; }));
+        App.views.savings.render(root);
+      });
+    });
+
+    root.querySelectorAll('.add-progress-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.id;
+        var input = root.querySelector('.add-progress-input[data-id="' + id + '"]');
+        var amount = parseFloat(input.value);
+        if (!isFinite(amount) || amount <= 0) return;
+        var g = goals.find(function (x) { return x.id === id; });
+        if (!g) return;
+        g.saved = (parseFloat(g.saved) || 0) + amount;
+        App.store.set('goals', goals);
+        App.views.savings.render(root);
+      });
+    });
+
+    document.getElementById('addGoalBtn').addEventListener('click', function () {
+      var name = document.getElementById('goalName').value.trim();
+      var target = parseFloat(document.getElementById('goalTarget').value);
+      var monthly = parseFloat(document.getElementById('goalMonthly').value);
+      if (!name || !isFinite(target) || target <= 0) { alert('Enter a goal name and target amount first.'); return; }
+      if (window.APP_DEMO_MODE && goals.length >= 3) {
+        alert('The demo is limited to 3 goals. The full version has no limit.');
+        return;
+      }
+      goals.push({
+        id: E.uid(), name: name, target: target, saved: 0,
+        monthlyContribution: isFinite(monthly) ? monthly : 0,
+      });
+      App.store.set('goals', goals);
+      App.views.savings.render(root);
+    });
+  },
+};
+App.nav.push('savings');
+
+
+/* Settings: rename the planner, back up/restore your data as JSON (addresses the
+ * research gap about wanting to take data out of the app), and load calm example
+ * numbers to explore the app risk-free (same "calm start" idea TheLittleMachines'
+ * listing describes, available here on demand rather than forced on first load so
+ * the app's true empty state stays genuinely empty). */
+window.App = window.App || { views: {}, nav: [] };
+
+App.views.settings = {
+  navLabel: 'Settings',
+  render: function (root) {
+    root.dataset.activeView = 'settings';
+    var E = App.engine;
+    var title = App.store.get('appTitle', '');
+
+    root.innerHTML =
+      '<h1>Settings</h1>' +
+      '<p class="sub">Your data stays on this device unless you back it up yourself.</p>' +
+      '<div class="card">' +
+      '  <h2>Planner name</h2>' +
+      '  <div class="row"><input id="appTitleInput" type="text" placeholder="My calm money plan" value="' +
+      (title ? title.replace(/"/g, '&quot;') : '') + '"></div>' +
+      '</div>' +
+      '<div class="card">' +
+      '  <h2>Backup</h2>' +
+      '  <p class="item-meta">Export everything as a JSON file you keep, or restore from one.</p>' +
+      '  <div class="row">' +
+      '    <button id="exportBtn" type="button" class="ghost">Export backup</button>' +
+      '    <button id="importBtn" type="button" class="ghost">Import backup</button>' +
+      '    <input id="importFile" type="file" accept="application/json" hidden>' +
+      '  </div>' +
+      '</div>' +
+      '<div class="card">' +
+      '  <h2>Try it with example numbers</h2>' +
+      '  <p class="item-meta">Loads a made-up paycheck, bills, a debt and a savings goal so you can see how the app works. Replace them with your own whenever you’re ready.</p>' +
+      '  <button id="resetDemoBtn" type="button" class="ghost">Load example data</button>' +
+      '</div>';
+
+    document.getElementById('appTitleInput').addEventListener('change', function (e) {
+      var v = e.target.value.trim();
+      App.store.set('appTitle', v);
+      var header = document.getElementById('app-title');
+      if (header) header.textContent = v || 'ADHD Budget Planner';
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', function () {
+      var blob = new Blob([JSON.stringify(App.store.all(), null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'budget-backup.json';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+
+    document.getElementById('importBtn').addEventListener('click', function () {
+      document.getElementById('importFile').click();
+    });
+
+    document.getElementById('importFile').addEventListener('change', function (e) {
+      var f = e.target.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        try {
+          var s = JSON.parse(r.result);
+          if (s && typeof s === 'object') {
+            App.importState(s);
+          } else {
+            alert('This file is not a valid backup.');
+          }
+        } catch (err) {
+          alert('This file is not a valid backup.');
+        }
+      };
+      r.readAsText(f);
+    });
+
+    document.getElementById('resetDemoBtn').addEventListener('click', function () {
+      if (!confirm('Replace your current data with example numbers? Export a backup first if you want to keep what you have.')) return;
+      var today = E.todayISO();
+      App.importState({
+        appTitle: 'My calm money plan',
+        paychecks: [{ id: E.uid(), name: 'Paycheck', amount: 2200, cadence: 'biweekly', day: 1, date: today }],
+        bills: [
+          { id: E.uid(), name: 'Rent', amount: 950, cadence: 'monthly', day: 1, months: 1, date: today },
+          { id: E.uid(), name: 'Phone', amount: 45, cadence: 'monthly', day: 12, months: 1, date: today },
+          { id: E.uid(), name: 'Car insurance', amount: 372, cadence: 'every_n_months', day: 5, months: 6, date: today },
+        ],
+        debts: [{ id: E.uid(), name: 'Credit card', balance: 1200, apr: 22, minPayment: 35, payments: [] }],
+        goals: [{ id: E.uid(), name: 'Emergency fund', target: 1000, saved: 150, monthlyContribution: 50 }],
+        log: [
+          { id: E.uid(), amount: 24.5, note: 'Groceries', date: today },
+          { id: E.uid(), amount: 12, note: 'Coffee', date: today },
+        ],
+      });
+    });
+  },
+};
+App.nav.push('settings');
+
+
+/* Orchestration: shared store (single localStorage blob, same backup-friendly pattern as
+ * tools/app_template.html) and demo-mode banner. No theme toggle and no global
+ * export/import chrome here (per spec.md: theme toggle excluded for v1 on thin evidence;
+ * export/import lives inside the Settings view, not the header, per spec's page/item
+ * list). Runs last, after every view module in app_src/modules/ has registered itself. */
+(function () {
+  var KEY = 'app-state-v1';
+
+  function load() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY));
+      return s && typeof s === 'object' ? s : {};
+    } catch (e) { return {}; }
+  }
+  function save(state) {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  var state = load();
+  window.App = window.App || { views: {}, nav: [] };
+  App.store = {
+    get: function (key, fallback) { return key in state ? state[key] : fallback; },
+    set: function (key, value) { state[key] = value; save(state); },
+    all: function () { return state; },
+  };
+  /* Used by the Settings view's Import backup control. */
+  App.importState = function (newState) {
+    state = newState;
+    save(state);
+    AppRouter.init();
+  };
+
+  if (window.APP_DEMO_MODE) {
+    document.getElementById('demo-banner').hidden = false;
+  }
+
+  AppRouter.init();
+})();
+
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function () {});
+}
+</script>
+</body>
+</html>
